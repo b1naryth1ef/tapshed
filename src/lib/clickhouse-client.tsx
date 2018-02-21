@@ -26,9 +26,9 @@ export interface TableInfo {
 }
 
 export interface TableStats {
-  bytes: string;
-  rows: string;
-  pkb: string;
+  bytes: number;
+  rows: number;
+  pkb: number;
 }
 
 export class ClickhouseClient {
@@ -51,8 +51,8 @@ export class ClickhouseClient {
   async getTableStats(database: string, table: string): Promise<TableStats | null> {
     let result = await this.executeQuery(
       `SELECT
-          formatReadableSize(sum(bytes)) as bytes,
-          formatReadableSize(sum(primary_key_bytes_in_memory)) as pkb,
+          sum(bytes) as bytes,
+          sum(primary_key_bytes_in_memory) as pkb,
           toString(sum(rows)) as rows
         FROM system.parts
         WHERE

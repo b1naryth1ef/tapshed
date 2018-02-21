@@ -2,8 +2,27 @@ import * as React from 'react';
 
 import { QueryResult } from '../lib/clickhouse-client';
 
+
+const numericalTypes = [
+  'UInt8',
+  'UInt16',
+  'UInt32',
+  'UInt64',
+  'Int8',
+  'Int16',
+  'Int32',
+  'Int64',
+  'Float32',
+  'Float64'
+];
+
+interface FieldFormatters {
+  [index: string]: (value: any) => string;
+}
+
 interface ResultsProps {
   result: QueryResult | null;
+  fieldFormatters: FieldFormatters | null;
 }
 
 enum SortDirection {
@@ -51,25 +70,44 @@ export class Results extends React.Component {
       return <div />;
     }
 
+    const result = this.props.result;
+
     let fields = [];
     let head = [];
     let body = [];
 
-    for (const column of this.props.result.meta) {
+    for (const column of result.meta) {
       fields.push(column.name);
       head.push(<th onClick={() => this.onClickColumn(column.name)} key={column.name}>{column.name}</th>);
     }
 
-    let rows = this.props.result.data.slice(0);
+    let rows = result.data.slice(0);
 
     if (this.state.sortBy !== null) {
-      let sortBy: string = this.state.sortBy;
+      const sortBy: string = this.state.sortBy;
+      let sortType: string = '';
+
+      for (const value of result.meta) {
+        if (value.name === sortBy) {
+          sortType = value.type;
+        }
+      }
 
       rows.sort((a, b) => {
-        if (a[sortBy] > b[sortBy]) {
-          return -1;
-        } else if (a[sortBy] < b[sortBy]) {
+        a = a[sortBy];
+        b = b[sortBy];
+
+        if (numericalTypes.includes(sortType)) {
+          if (a != null && b != null) {
+            a = parseInt(a, 10);
+            b = parseInt(b, 10);
+          }
+        }
+
+        if (a > b) {
           return 1;
+        } else if (a < b) {
+          return -1;
         } else {
           return 0;
         }
@@ -86,7 +124,11 @@ export class Results extends React.Component {
         if (row[field] === null) {
           cols.push(<td key={field}><span className="null">NULL</span></td>);
         } else {
-          cols.push(<td key={field}>{row[field]}</td>);
+          let value = row[field];
+          if (this.props.fieldFormatters && this.props.fieldFormatters[field]) {
+            value = this.props.fieldFormatters[field](value);
+          }
+          cols.push(<td key={field}>{value}</td>);
         }
       }
 

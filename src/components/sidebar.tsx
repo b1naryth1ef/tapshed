@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { ClickhouseClient, TableStats } from '../lib/clickhouse-client';
+import { prettyFormatNumber, prettyFormatBytes } from '../lib/formatting';
 
 interface SideBarProps {
   client: ClickhouseClient;
@@ -67,13 +68,21 @@ export class SideBar extends React.Component {
     let tableInformationRows = [];
     let tableInformation;
     if (this.state.tableStats !== null) {
-      tableInformationRows.push(<li key="size">Size: <span>{this.state.tableStats.bytes}</span></li>);
       tableInformationRows.push(
-        <li key="rows">Rows:
-          <span>{this.state.tableStats.rows.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
+        <li key="size">
+          Size: <span>{prettyFormatBytes(this.state.tableStats.bytes)}</span>
         </li>
       );
-      tableInformationRows.push(<li key="pkb">PK Memory: <span>{this.state.tableStats.pkb}</span></li>);
+      tableInformationRows.push(
+        <li key="rows">Rows:
+          <span>{prettyFormatNumber(this.state.tableStats.rows)}</span>
+        </li>
+      );
+      tableInformationRows.push(
+        <li key="pkb">
+          PK Memory: <span>{prettyFormatBytes(this.state.tableStats.pkb)}</span>
+        </li>
+      );
 
       tableInformation = (
         <ul style={{display: 'block'}}>

@@ -1,8 +1,9 @@
 import * as React from 'react';
 import AceEditor from 'react-ace';
+import 'brace/theme/tomorrow';
 
 import { QueryResult } from '../lib/clickhouse-client';
-import 'brace/theme/tomorrow';
+import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
 
 interface EditorActionsProps {
   executeQuery: () => void;
@@ -20,9 +21,9 @@ export class EditorActions extends React.Component {
       resultText = 'executing query...';
     } else if (this.props.queryResult != null) {
       const result = this.props.queryResult;
-      let statsText = `${result.statistics.elapsed}s, `;
-      statsText += `${result.statistics.rows_read.toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,')} rows, `;
-      statsText += `${result.statistics.bytes_read} bytes`;
+      let statsText = `${prettyFormatSeconds(result.statistics.elapsed)}s, `;
+      statsText += `${prettyFormatNumber(result.statistics.rows_read)} rows, `;
+      statsText += `${prettyFormatBytes(result.statistics.bytes_read)}`;
       resultText = `${result.rows} rows returned (${statsText})`;
     }
 
