@@ -1,0 +1,19 @@
+== misc tasks ==
+
+- handle integers / bigints in results
+- better client-side formatting of things
+- export as json / csv / etc
+- look into progress bar support
+- query cancel support
+
+== saving ==
+- ability to save queries
+  - firebase?
+  - local only?
+
+== graphing ==
+- simple graphs;
+  - line
+  - pie
+- saved graphs
+- dashboards
