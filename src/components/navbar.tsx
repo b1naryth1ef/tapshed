@@ -49,6 +49,7 @@ class NavBarItem extends React.Component {
 interface NavBarProps {
   page: PageType;
   setPage: (pageType: PageType) => void;
+  disconnect: () => void;
 }
 
 export class NavBar extends React.Component {
@@ -61,6 +62,9 @@ export class NavBar extends React.Component {
           <NavBarItem pageType={PageType.QUERY} parent={this} />
           <NavBarItem pageType={PageType.SCHEMA} parent={this} />
         </ul>
+        <div className="connection-actions" style={{display: 'block'}}>
+          <a href="#" className="btn btn-default btn-sm" onClick={this.props.disconnect}>Disconnect</a>
+        </div>
       </div>
     );
   }

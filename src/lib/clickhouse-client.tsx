@@ -33,9 +33,13 @@ export interface TableStats {
 
 export class ClickhouseClient {
   url: string;
+  username: string | null;
+  password: string | null;
 
-  constructor(url: string) {
+  constructor(url: string, username?: string, password?: string) {
     this.url = url;
+    this.username = username || null;
+    this.password = password || null;
   }
 
   async getDatabases() {
@@ -83,16 +87,22 @@ export class ClickhouseClient {
   }
 
   async executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
+    let opts: any = {
+      params: {
+        add_http_cors_header: 1,
+        output_format_json_quote_64bit_integers: 1,
+        output_format_json_quote_denormals: 1,
+        query: this.formatQuery(query),
+        database: database,
+      },
+    };
+
+    if (this.username && this.password) {
+      opts.auth = {username: this.username, password: this.password};
+    }
+
     try {
-      let result = await axios.get(this.url, {
-        params: {
-          add_http_cors_header: 1,
-          output_format_json_quote_64bit_integers: 1,
-          output_format_json_quote_denormals: 1,
-          query: this.formatQuery(query),
-          database: database,
-        }
-      });
+      let result = await axios.get(this.url, opts);
       return result.data;
     } catch (err) {
       if (err.response) {
