@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { Editor } from '../editor';
 import { Results } from '../results';
-import { QueryResult } from '../../lib/clickhouse-client';
+import { ClickhouseClient, QueryResult } from '../../lib/clickhouse-client';
 
 interface QueryPageProps {
   executeQuery: (query: string) => void;
@@ -10,6 +10,7 @@ interface QueryPageProps {
   queryExecuting: boolean;
   queryResult: QueryResult | null;
   queryError: string | null;
+  client: ClickhouseClient;
 }
 
 export class QueryPage extends React.Component {
@@ -26,6 +27,7 @@ export class QueryPage extends React.Component {
               queryResult={this.props.queryResult}
               queryExecuting={this.props.queryExecuting}
               queryError={this.props.queryError}
+              client={this.props.client}
             />
           </div>
         </div>

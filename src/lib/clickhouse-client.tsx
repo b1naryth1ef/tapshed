@@ -75,24 +75,24 @@ export class ClickhouseClient {
     };
   }
 
-  formatQuery(query: string) {
+  formatQuery(query: string, format?: string) {
     // If the query ends with a semicolon just strip it
     if (query.slice(-1) === ';') {
       query = query.slice(0, -1);
     }
 
     // Format the result as JSON
-    query = query + ' FORMAT JSON';
+    query = query + ` FORMAT ${format || 'JSON'}`;
     return query;
   }
 
-  async executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
+  async executeQueryRaw(query: string, format: string = 'JSON', database: string = 'default'): Promise<any> {
     let opts: any = {
       params: {
         add_http_cors_header: 1,
         output_format_json_quote_64bit_integers: 1,
         output_format_json_quote_denormals: 1,
-        query: this.formatQuery(query),
+        query: this.formatQuery(query, format),
         database: database,
       },
     };
@@ -111,5 +111,9 @@ export class ClickhouseClient {
 
       throw err;
     }
+  }
+
+  async executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
+    return this.executeQueryRaw(query, 'JSON', database) as Promise<QueryResult>;
   }
 }

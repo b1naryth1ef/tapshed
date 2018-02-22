@@ -2,18 +2,58 @@ import * as React from 'react';
 import AceEditor from 'react-ace';
 import 'brace/theme/tomorrow';
 
-import { QueryResult } from '../lib/clickhouse-client';
+import { ClickhouseClient, QueryResult } from '../lib/clickhouse-client';
 import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
+
+function makeRandom(size: number) {
+  let text = '';
+  let possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+  for (let i = 0; i < size; i++) {
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+
+  return text;
+}
+
+function download(filename: string, dataType: string, data: string) {
+  let element = document.createElement('a');
+  element.setAttribute('href', window.URL.createObjectURL(new Blob([data], {type: dataType})));
+  // element.setAttribute('href', `data:${dataType};charset=utf-8,` + encodeURIComponent(data));
+  element.setAttribute('download', filename);
+
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  document.body.removeChild(element);
+}
 
 interface EditorActionsProps {
   executeQuery: () => void;
   queryExecuting: boolean;
   queryResult: QueryResult | null;
   queryError: string | null;
+  client: ClickhouseClient;
+  contents: string;
 }
 
 export class EditorActions extends React.Component {
   props: EditorActionsProps;
+
+  async exportJSON() {
+    const result = await this.props.client.executeQueryRaw(this.props.contents, 'JSON');
+    download(`table-${makeRandom(6)}.json`, 'application/json', JSON.stringify(result.data));
+  }
+
+  async exportCSV() {
+    const result = await this.props.client.executeQueryRaw(this.props.contents, 'CSVWithNames');
+    download(`table-${makeRandom(6)}.csv`, 'text/csv', result);
+  }
+
+  async exportPretty() {
+    const result = await this.props.client.executeQueryRaw(this.props.contents, 'PrettyNoEscapes');
+    download(`table-${makeRandom(6)}.txt`, 'text/plain', result);
+  }
 
   render() {
     let resultText: string | JSX.Element = '';
@@ -49,7 +89,24 @@ export class EditorActions extends React.Component {
         />
         <div className="pull-right">
           <span id="result-rows-count">{resultText}</span>
-          <input type="button" id="json" value="JSON" className="btn btn-sm btn-default" />
+          <input
+            type="button"
+            value="JSON"
+            className="btn btn-sm btn-default"
+            onClick={() => this.exportJSON()}
+          />
+          <input
+            type="button"
+            value="CSV"
+            className="btn btn-sm btn-default"
+            onClick={() => this.exportCSV()}
+          />
+          <input
+            type="button"
+            value="Pretty"
+            className="btn btn-sm btn-default"
+            onClick={() => this.exportPretty()}
+          />
         </div>
       </div>
     );
@@ -57,6 +114,7 @@ export class EditorActions extends React.Component {
 }
 
 interface EditorProps {
+  client: ClickhouseClient;
   executeQuery: (query: string) => void;
   contents: string;
   queryExecuting: boolean;
@@ -111,6 +169,8 @@ export class Editor extends React.Component {
           queryResult={this.props.queryResult}
           queryExecuting={this.props.queryExecuting}
           queryError={this.props.queryError}
+          client={this.props.client}
+          contents={this.props.contents}
         />
       </div>
     );

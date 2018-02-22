@@ -112,6 +112,7 @@ class App extends React.Component {
       case PageType.QUERY:
         page = (
           <QueryPage
+            client={this.state.client}
             executeQuery={executeQuery}
             queryContents={this.state.queryContents}
             queryExecuting={this.state.queryExecuting}
