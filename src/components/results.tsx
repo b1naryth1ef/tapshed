@@ -2,7 +2,6 @@ import * as React from 'react';
 
 import { QueryResult } from '../lib/clickhouse-client';
 
-
 const numericalTypes = [
   'UInt8',
   'UInt16',
@@ -22,6 +21,7 @@ interface FieldFormatters {
 
 interface ResultsProps {
   result: QueryResult | null;
+  queryError: string | null;
   fieldFormatters: FieldFormatters | null;
 }
 
@@ -66,7 +66,13 @@ export class Results extends React.Component {
   }
 
   render() {
-    if (this.props.result == null) {
+    if (this.props.queryError !== null) {
+      return (
+        <div>
+          <pre>{this.props.queryError}</pre>
+        </div>
+      );
+    } else if (this.props.result == null) {
       return <div />;
     }
 

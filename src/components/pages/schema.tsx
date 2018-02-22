@@ -67,7 +67,7 @@ export class SchemaPage extends React.Component {
     if (!this.props.databaseName || !this.props.tableName) {
       body = <h3>Select a table...</h3>;
     } else if (this.state.result !== null) {
-      body = <Results result={this.state.result} fieldFormatters={fieldFormatters} />;
+      body = <Results result={this.state.result} fieldFormatters={fieldFormatters} queryError={null} />;
     } else {
       body = <h3>Loading...</h3>;
     }

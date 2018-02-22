@@ -7,8 +7,9 @@ import { QueryResult } from '../../lib/clickhouse-client';
 interface QueryPageProps {
   executeQuery: (query: string) => void;
   queryContents: string;
-  queryResult: QueryResult | null;
   queryExecuting: boolean;
+  queryResult: QueryResult | null;
+  queryError: string | null;
 }
 
 export class QueryPage extends React.Component {
@@ -24,12 +25,17 @@ export class QueryPage extends React.Component {
               contents={this.props.queryContents}
               queryResult={this.props.queryResult}
               queryExecuting={this.props.queryExecuting}
+              queryError={this.props.queryError}
             />
           </div>
         </div>
         <div id="output">
           <div className="wrapper">
-            <Results result={this.props.queryResult} fieldFormatters={null}/>
+            <Results
+              result={this.props.queryResult}
+              fieldFormatters={null}
+              queryError={this.props.queryError}
+            />
           </div>
         </div>
       </div>

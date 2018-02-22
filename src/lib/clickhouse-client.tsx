@@ -82,9 +82,9 @@ export class ClickhouseClient {
     return query;
   }
 
-  executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
-    return new Promise((resolve, reject) => {
-      axios.get(this.url, {
+  async executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
+    try {
+      let result = await axios.get(this.url, {
         params: {
           add_http_cors_header: 1,
           output_format_json_quote_64bit_integers: 1,
@@ -92,11 +92,14 @@ export class ClickhouseClient {
           query: this.formatQuery(query),
           database: database,
         }
-      }).then((res) => {
-        resolve(res.data);
-      }).catch((err) => {
-        reject(err);
       });
-    });
+      return result.data;
+    } catch (err) {
+      if (err.response) {
+        throw err.response.data;
+      }
+
+      throw err;
+    }
   }
 }

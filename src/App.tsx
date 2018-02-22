@@ -19,8 +19,9 @@ interface AppState {
   tableName: string | null;
 
   queryContents: string;
-  queryResult: QueryResult | null;
   queryExecuting: boolean;
+  queryResult: QueryResult | null;
+  queryError: string | null;
 }
 
 class App extends React.Component {
@@ -35,8 +36,9 @@ class App extends React.Component {
       databaseName: 'default',
       tableName: null,
       queryContents: window.localStorage.getItem('cached-query') || '',
-      queryResult: null,
       queryExecuting: false,
+      queryResult: null,
+      queryError: null,
     };
   }
 
@@ -45,15 +47,23 @@ class App extends React.Component {
       return;
     }
 
-    this.setState({queryExecuting: true});
-
-    const result = await this.state.client.executeQuery(query);
-    this.setState({
-      queryContents: query,
-      queryResult: result,
-      queryExecuting: false,
-    });
     window.localStorage.setItem('cached-query', query);
+    this.setState({queryExecuting: true, queryContents: query});
+
+    try {
+      const result = await this.state.client.executeQuery(query);
+      this.setState({
+        queryResult: result,
+        queryError: null,
+        queryExecuting: false,
+      });
+    } catch (error) {
+      this.setState({
+        queryResult: null,
+        queryExecuting: false,
+        queryError: error,
+      });
+    }
   }
 
   setTableName(tableName: string) {
@@ -76,8 +86,9 @@ class App extends React.Component {
           <QueryPage
             executeQuery={executeQuery}
             queryContents={this.state.queryContents}
-            queryResult={this.state.queryResult}
             queryExecuting={this.state.queryExecuting}
+            queryResult={this.state.queryResult}
+            queryError={this.state.queryError}
           />
         );
         break;

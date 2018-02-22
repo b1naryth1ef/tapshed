@@ -7,18 +7,21 @@ import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../l
 
 interface EditorActionsProps {
   executeQuery: () => void;
-  queryResult: QueryResult | null;
   queryExecuting: boolean;
+  queryResult: QueryResult | null;
+  queryError: string | null;
 }
 
 export class EditorActions extends React.Component {
   props: EditorActionsProps;
 
   render() {
-    let resultText: string = '';
+    let resultText: string | JSX.Element = '';
 
     if (this.props.queryExecuting) {
       resultText = 'executing query...';
+    } else if (this.props.queryError) {
+      resultText = <span className="query-error">Error!</span>;
     } else if (this.props.queryResult != null) {
       const result = this.props.queryResult;
       let statsText = `${prettyFormatSeconds(result.statistics.elapsed)}s, `;
@@ -53,12 +56,12 @@ export class EditorActions extends React.Component {
   }
 }
 
-
 interface EditorProps {
   executeQuery: (query: string) => void;
   contents: string;
-  queryResult: QueryResult | null;
   queryExecuting: boolean;
+  queryResult: QueryResult | null;
+  queryError: string | null;
 }
 
 export class Editor extends React.Component {
@@ -107,6 +110,7 @@ export class Editor extends React.Component {
           executeQuery={() => this.props.executeQuery(this.contents)}
           queryResult={this.props.queryResult}
           queryExecuting={this.props.queryExecuting}
+          queryError={this.props.queryError}
         />
       </div>
     );

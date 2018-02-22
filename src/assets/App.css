@@ -742,3 +742,7 @@
 .tables i {
   margin-right: 4px;
 }
+
+span.query-error {
+  color: #a94442;
+}
