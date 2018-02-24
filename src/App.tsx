@@ -77,8 +77,10 @@ class App extends React.Component {
   }
 
   connect(url: string, username: string | null, password: string | null) {
+    const client = new ClickhouseClient(url);
+
     this.setState({
-      client: new ClickhouseClient(url),
+      client: client,
     });
 
     window.localStorage.setItem('conn', JSON.stringify([url, username, password]));

@@ -4,6 +4,7 @@ import 'brace/theme/tomorrow';
 
 import { ClickhouseClient, QueryResult } from '../lib/clickhouse-client';
 import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
+import { ClickhouseAceMode } from '../lib/clickhouse-ace-mode';
 
 function makeRandom(size: number) {
   let text = '';
@@ -124,11 +125,17 @@ interface EditorProps {
 
 export class Editor extends React.Component {
   props: EditorProps;
+  private aceRef: any;
   private contents: string;
 
   constructor(props: EditorProps) {
     super(props);
     this.contents = props.contents;
+  }
+
+  componentDidMount() {
+    const mode = new ClickhouseAceMode();
+    this.aceRef.editor.getSession().setMode(mode);
   }
 
   onEditorChange = (newValue: string) => {
@@ -158,11 +165,11 @@ export class Editor extends React.Component {
           setOptions={{
             tabSize: 2,
             useSoftTabs: true,
-            enableSnippets: true,
           }}
           commands={commands}
           onChange={this.onEditorChange}
           value={this.contents}
+          ref={(ref) => { this.aceRef = ref; }}
         />
         <EditorActions
           executeQuery={() => this.props.executeQuery(this.contents)}

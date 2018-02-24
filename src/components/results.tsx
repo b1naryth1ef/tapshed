@@ -69,7 +69,7 @@ export class Results extends React.Component {
     if (this.props.queryError !== null) {
       return (
         <div>
-          <pre>{this.props.queryError}</pre>
+          <pre>{String(this.props.queryError)}</pre>
         </div>
       );
     } else if (this.props.result == null) {
