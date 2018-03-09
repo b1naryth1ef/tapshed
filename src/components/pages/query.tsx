@@ -2,14 +2,15 @@ import * as React from 'react';
 
 import { Editor } from '../editor';
 import { Results } from '../results';
-import { ClickhouseClient, QueryResult } from '../../lib/clickhouse-client';
+import { ClickhouseClient, NewQueryResult, QueryProgress } from '../../lib/clickhouse-client';
 
 interface QueryPageProps {
   executeQuery: (query: string) => void;
   queryContents: string;
   queryExecuting: boolean;
-  queryResult: QueryResult | null;
+  queryResult: NewQueryResult | null;
   queryError: string | null;
+  queryProgress: QueryProgress | null;
   client: ClickhouseClient;
 }
 
@@ -17,6 +18,19 @@ export class QueryPage extends React.Component {
   props: QueryPageProps;
 
   render() {
+    let queryProgress = null;
+    if (this.props.queryProgress) {
+      let queryProgressPercentage = (
+        this.props.queryProgress.num_rows / this.props.queryProgress.total_rows
+      ) * 100;
+
+      queryProgress = (
+        <div className="progress">
+          <div className="progress-bar" style={{width: `${queryProgressPercentage}%`}} />
+        </div>
+      );
+    }
+
     return (
       <div id="body">
         <div id="input">
@@ -32,6 +46,7 @@ export class QueryPage extends React.Component {
           </div>
         </div>
         <div id="output">
+          {queryProgress}
           <div className="wrapper">
             <Results
               result={this.props.queryResult}

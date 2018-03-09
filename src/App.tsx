@@ -10,7 +10,7 @@ import { ConnectionDialog } from './components/connection';
 import { QueryPage } from './components/pages/query';
 import { SchemaPage } from './components/pages/schema';
 
-import { ClickhouseClient, QueryResult } from './lib/clickhouse-client';
+import { ClickhouseClient, NewQueryResult, QueryProgress } from './lib/clickhouse-client';
 
 interface AppState {
   client: ClickhouseClient | null;
@@ -21,8 +21,9 @@ interface AppState {
 
   queryContents: string;
   queryExecuting: boolean;
-  queryResult: QueryResult | null;
+  queryResult: NewQueryResult | null;
   queryError: string | null;
+  queryProgress: QueryProgress | null;
 }
 
 class App extends React.Component {
@@ -48,6 +49,7 @@ class App extends React.Component {
       queryExecuting: false,
       queryResult: null,
       queryError: null,
+      queryProgress: null,
     };
   }
 
@@ -60,18 +62,25 @@ class App extends React.Component {
     this.setState({queryExecuting: true, queryContents: query});
 
     try {
-      const result = await this.state.client.executeQuery(query);
+      const result = await this.state.client.executeQuery(
+        query,
+        this.state.databaseName,
+        (progress: QueryProgress) => {
+          this.setState({queryProgress: progress});
+    });
 
       this.setState({
         queryResult: result,
         queryError: null,
         queryExecuting: false,
+        queryProgress: null,
       });
     } catch (error) {
       this.setState({
         queryResult: null,
         queryExecuting: false,
         queryError: error,
+        queryProgress: null,
       });
     }
   }
@@ -120,6 +129,7 @@ class App extends React.Component {
             queryExecuting={this.state.queryExecuting}
             queryResult={this.state.queryResult}
             queryError={this.state.queryError}
+            queryProgress={this.state.queryProgress}
           />
         );
         break;

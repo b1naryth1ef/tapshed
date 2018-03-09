@@ -2,8 +2,10 @@ import * as React from 'react';
 import AceEditor from 'react-ace';
 import 'brace/theme/tomorrow';
 
-import { ClickhouseClient, QueryResult } from '../lib/clickhouse-client';
-import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
+import { CSVWriter } from '../lib/csv';
+
+import { ClickhouseClient, NewQueryResult, getResultAsObjects } from '../lib/clickhouse-client';
+// import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
 import { ClickhouseAceMode } from '../lib/clickhouse-ace-mode';
 
 function makeRandom(size: number) {
@@ -32,7 +34,7 @@ function download(filename: string, dataType: string, data: string) {
 interface EditorActionsProps {
   executeQuery: () => void;
   queryExecuting: boolean;
-  queryResult: QueryResult | null;
+  queryResult: NewQueryResult | null;
   queryError: string | null;
   client: ClickhouseClient;
   contents: string;
@@ -41,19 +43,25 @@ interface EditorActionsProps {
 export class EditorActions extends React.Component {
   props: EditorActionsProps;
 
+  // TODO(NewQueryResult): convert all these to do data manipulation in-browser
   async exportJSON() {
-    const result = await this.props.client.executeQueryRaw(this.props.contents, 'JSON');
-    download(`table-${makeRandom(6)}.json`, 'application/json', JSON.stringify(result.data));
+    if (this.props.queryResult) {
+      const obj = getResultAsObjects(this.props.queryResult);
+      download(`table-${makeRandom(6)}.json`, 'application/json', JSON.stringify(obj));
+    }
   }
 
   async exportCSV() {
-    const result = await this.props.client.executeQueryRaw(this.props.contents, 'CSVWithNames');
-    download(`table-${makeRandom(6)}.csv`, 'text/csv', result);
-  }
+    if (this.props.queryResult) {
+      const writer = new CSVWriter;
 
-  async exportPretty() {
-    const result = await this.props.client.executeQueryRaw(this.props.contents, 'PrettyNoEscapes');
-    download(`table-${makeRandom(6)}.txt`, 'text/plain', result);
+      writer.writeRow(this.props.queryResult.columns.map((col) => { return col.name; }));
+
+      for (const row of this.props.queryResult.rows) {
+        writer.writeRow(row);
+      }
+      download(`table-${makeRandom(6)}.csv`, 'text/csv', writer.getData());
+    }
   }
 
   render() {
@@ -64,11 +72,12 @@ export class EditorActions extends React.Component {
     } else if (this.props.queryError) {
       resultText = <span className="query-error">Error!</span>;
     } else if (this.props.queryResult != null) {
-      const result = this.props.queryResult;
-      let statsText = `${prettyFormatSeconds(result.statistics.elapsed)}s, `;
-      statsText += `${prettyFormatNumber(result.statistics.rows_read)} rows, `;
-      statsText += `${prettyFormatBytes(result.statistics.bytes_read)}`;
-      resultText = `${result.rows} rows returned (${statsText})`;
+      // const result = this.props.queryResult;
+      // TODO(NewQueryResult)
+      // let statsText = `${prettyFormatSeconds(result.statistics.elapsed)}s, `;
+      // statsText += `${prettyFormatNumber(result.statistics.rows_read)} rows, `;
+      // statsText += `${prettyFormatBytes(result.statistics.bytes_read)}`;
+      // resultText = `${result.rows} rows returned (${statsText})`;
     }
 
     return (
@@ -102,12 +111,6 @@ export class EditorActions extends React.Component {
             className="btn btn-sm btn-default"
             onClick={() => this.exportCSV()}
           />
-          <input
-            type="button"
-            value="Pretty"
-            className="btn btn-sm btn-default"
-            onClick={() => this.exportPretty()}
-          />
         </div>
       </div>
     );
@@ -119,7 +122,7 @@ interface EditorProps {
   executeQuery: (query: string) => void;
   contents: string;
   queryExecuting: boolean;
-  queryResult: QueryResult | null;
+  queryResult: NewQueryResult | null;
   queryError: string | null;
 }
 

@@ -1,22 +1,4 @@
-import axios from 'axios';
-
-interface QueryStatistics {
-  elapsed: number;
-  bytes_read: number;
-  rows_read: number;
-}
-
-interface QueryColumnMetadata {
-  name: string;
-  type: string;
-}
-
-export interface QueryResult {
-  data: ReadonlyArray<any>;
-  meta: ReadonlyArray<QueryColumnMetadata>;
-  rows: number;
-  statistics: QueryStatistics;
-}
+// import axios from 'axios';
 
 export interface TableInfo {
   database: string;
@@ -31,6 +13,36 @@ export interface TableStats {
   pkb: number;
 }
 
+export interface ColumnInfo {
+  name: string;
+  type: string;
+}
+
+export interface NewQueryResult {
+  columns: ReadonlyArray<ColumnInfo>;
+  rows: ReadonlyArray<any>;
+}
+
+export interface QueryProgress {
+  num_rows: number;
+  total_rows: number;
+}
+
+type QueryProgressFunction = (progress: QueryProgress) => void;
+
+export function getResultAsObjects(result: NewQueryResult): ReadonlyArray<TableInfo> {
+  let objects = result.rows.map((row) => {
+    let obj = {};
+    for (let [idx, columnInfo] of result.columns.entries()) {
+      obj[columnInfo.name] = row[idx];
+    }
+    return (obj as TableInfo);
+  });
+
+  return (objects as ReadonlyArray<TableInfo>);
+}
+
+
 export class ClickhouseClient {
   url: string;
   username: string | null;
@@ -43,13 +55,13 @@ export class ClickhouseClient {
   }
 
   async getDatabases() {
-    let result = await this.executeQuery(`SELECT * FROM system.databases`);
-    return result.data.map((row) => row.name);
+    let result = await this.executeQuery(`SELECT name FROM system.databases`);
+    return result.rows.map((row) => row[0]);
   }
 
   async getTables(database: string): Promise<ReadonlyArray<TableInfo>> {
     let result = await this.executeQuery(`SELECT * FROM system.tables WHERE database='${database}'`);
-    return result.data;
+    return getResultAsObjects(result);
   }
 
   async getTableStats(database: string, table: string): Promise<TableStats | null> {
@@ -64,56 +76,94 @@ export class ClickhouseClient {
           AND table='${table}'`
     );
 
-    if (result.data.length === 0) {
+    if (result.rows.length === 0) {
       return null;
     }
 
     return {
-      bytes: result.data[0].bytes,
-      rows: result.data[0].rows,
-      pkb: result.data[0].pkb,
+      bytes: result.rows[0][0],
+      rows: result.rows[0][1],
+      pkb: result.rows[0][2],
     };
   }
 
-  formatQuery(query: string, format?: string) {
-    // If the query ends with a semicolon just strip it
-    if (query.slice(-1) === ';') {
-      query = query.slice(0, -1);
-    }
+  async executeQueryRaw(
+        query: string,
+        database: string = 'default',
+        onProgress: QueryProgressFunction | null = null
+      ): Promise<any> {
+    const url = this.url + `/query?database=${encodeURIComponent(database)}&query=${encodeURIComponent(query)}`;
+    const source = new EventSource(url);
 
-    // Format the result as JSON
-    query = query + ` FORMAT ${format || 'JSON'}`;
-    return query;
+    return new Promise((resolve, reject) => {
+      source.addEventListener('progress', (e: any) => {
+        const data = JSON.parse(e.data);
+        if (onProgress) {
+          onProgress(data);
+        }
+      });
+
+      source.addEventListener('result', (e: any) => {
+        const data = JSON.parse(e.data);
+        resolve(data);
+      });
+
+      source.onerror = function (event: any) {
+        source.close();
+        reject();
+      };
+    });
   }
 
-  async executeQueryRaw(query: string, format: string = 'JSON', database: string = 'default'): Promise<any> {
-    let opts: any = {
-      params: {
-        add_http_cors_header: 1,
-        output_format_json_quote_64bit_integers: 1,
-        output_format_json_quote_denormals: 1,
-        query: this.formatQuery(query, format),
-        database: database,
-      },
-    };
+  async executeQuery(
+        query: string,
+        database: string = 'default',
+        onProgress: QueryProgressFunction | null = null
+      ): Promise<NewQueryResult> {
+    return this.executeQueryRaw(query, database, onProgress) as Promise<NewQueryResult>;
+  }
+}
 
-    if (this.username && this.password) {
-      opts.auth = {username: this.username, password: this.password};
-    }
+export class Query {
+  onProgress: QueryProgressFunction | null;
 
-    try {
-      let result = await axios.get(this.url, opts);
-      return result.data;
-    } catch (err) {
-      if (err.response) {
-        throw err.response.data;
+  private client: ClickhouseClient;
+  private eventSource: EventSource;
+  private result: Promise<NewQueryResult>;
+
+  constructor(client: ClickhouseClient, query: string, onProgress: QueryProgressFunction | null = null) {
+    this.client = client;
+    this.onProgress = onProgress;
+
+    const url = this.client.url + `/query?query=${encodeURIComponent(query)}`;
+    this.eventSource = new EventSource(url);
+
+    // Track progress
+    this.eventSource.addEventListener('progress', (e: any) => {
+      const data = JSON.parse(e.data);
+      if (this.onProgress) {
+        this.onProgress(data);
       }
+    });
 
-      throw err;
-    }
+    this.result = new Promise((resolve, reject) => {
+      this.eventSource.addEventListener('result', (e: any) => {
+        const data = JSON.parse(e.data);
+        resolve(data);
+      });
+
+      this.eventSource.onerror = (event: any) => {
+        this.eventSource.close();
+        reject(event.error);
+      };
+    });
   }
 
-  async executeQuery(query: string, database: string = 'default'): Promise<QueryResult> {
-    return this.executeQueryRaw(query, 'JSON', database) as Promise<QueryResult>;
+  get() {
+    return this.result;
+  }
+
+  cancel() {
+    this.eventSource.close();
   }
 }

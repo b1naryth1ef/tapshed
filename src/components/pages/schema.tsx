@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { Results } from '../results';
-import { ClickhouseClient, QueryResult } from '../../lib/clickhouse-client';
+import { ClickhouseClient, NewQueryResult } from '../../lib/clickhouse-client';
 import { prettyFormatBytes } from '../../lib/formatting';
 
 interface SchemaPageProps {
@@ -11,7 +11,7 @@ interface SchemaPageProps {
 }
 
 interface SchemaPageState {
-  result: QueryResult | null;
+  result: NewQueryResult | null;
 }
 
 export class SchemaPage extends React.Component {

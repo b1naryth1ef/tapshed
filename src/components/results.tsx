@@ -1,26 +1,26 @@
 import * as React from 'react';
 
-import { QueryResult } from '../lib/clickhouse-client';
+import { NewQueryResult } from '../lib/clickhouse-client';
 
-const numericalTypes = [
-  'UInt8',
-  'UInt16',
-  'UInt32',
-  'UInt64',
-  'Int8',
-  'Int16',
-  'Int32',
-  'Int64',
-  'Float32',
-  'Float64'
-];
+// const numericalTypes = [
+//   'UInt8',
+//   'UInt16',
+//   'UInt32',
+//   'UInt64',
+//   'Int8',
+//   'Int16',
+//   'Int32',
+//   'Int64',
+//   'Float32',
+//   'Float64'
+// ];
 
 interface FieldFormatters {
   [index: string]: (value: any) => string;
 }
 
 interface ResultsProps {
-  result: QueryResult | null;
+  result: NewQueryResult | null;
   queryError: string | null;
   fieldFormatters: FieldFormatters | null;
 }
@@ -77,38 +77,28 @@ export class Results extends React.Component {
     }
 
     const result = this.props.result;
+    let headings = result.columns.map((col) => {
+      return <th onClick={() => this.onClickColumn(col.name)} key={col.name}>{col.name}</th>;
+    });
 
-    let fields = [];
-    let head = [];
-    let body = [];
+    const columnNameIndexes = result.columns.map((col) => { return col.name; });
 
-    for (const column of result.meta) {
-      fields.push(column.name);
-      head.push(<th onClick={() => this.onClickColumn(column.name)} key={column.name}>{column.name}</th>);
+    // TODO: sorting
+
+    let fieldFormatters = {};
+    if (this.props.fieldFormatters) {
+      for (const field of Object.keys(this.props.fieldFormatters)) {
+        fieldFormatters[columnNameIndexes.indexOf(field)] = this.props.fieldFormatters[field];
+      }
     }
 
-    let rows = result.data.slice(0);
-
+    let rawRows = result.rows.slice(0);
     if (this.state.sortBy !== null) {
-      const sortBy: string = this.state.sortBy;
-      let sortType: string = '';
+      const sortByIndex: number = columnNameIndexes.indexOf(this.state.sortBy);
 
-      for (const value of result.meta) {
-        if (value.name === sortBy) {
-          sortType = value.type;
-        }
-      }
-
-      rows.sort((a, b) => {
-        a = a[sortBy];
-        b = b[sortBy];
-
-        if (numericalTypes.includes(sortType)) {
-          if (a != null && b != null) {
-            a = parseInt(a, 10);
-            b = parseInt(b, 10);
-          }
-        }
+      rawRows.sort((a, b) => {
+        a = a[sortByIndex];
+        b = b[sortByIndex];
 
         if (a > b) {
           return 1;
@@ -120,34 +110,31 @@ export class Results extends React.Component {
       });
 
       if (this.state.sortDir === SortDirection.DESC) {
-        rows.reverse();
+        rawRows.reverse();
       }
     }
 
-    for (const [idx, row] of rows.entries()) {
+    let rows = [];
+    for (const [rowIndex, row] of rawRows.entries()) {
       let cols = [];
-      for (const field of fields) {
-        if (row[field] === null) {
-          cols.push(<td key={field}><span className="null">NULL</span></td>);
-        } else {
-          let value = row[field];
-          if (this.props.fieldFormatters && this.props.fieldFormatters[field]) {
-            value = this.props.fieldFormatters[field](value);
-          }
-          cols.push(<td key={field}>{value}</td>);
+      for (let [colIndex, col] of row.entries()) {
+        if (fieldFormatters[colIndex]) {
+          col = fieldFormatters[colIndex](col);
         }
+
+        cols.push(<td key={result.columns[colIndex].name}>{col}</td>);
       }
 
-      body.push(<tr key={idx}>{cols}</tr>);
+      rows.push(<tr key={rowIndex}>{cols}</tr>);
     }
 
     return (
       <table id="results" className="table" data-mode={true}>
         <thead>
-          <tr>{head}</tr>
+          <tr>{headings}</tr>
         </thead>
         <tbody>
-          {body}
+          {rows}
         </tbody>
       </table>
     );
