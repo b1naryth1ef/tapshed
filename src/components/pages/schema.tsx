@@ -1,8 +1,11 @@
 import * as React from 'react';
 
 import { Results } from '../results';
-import { ClickhouseClient, NewQueryResult } from '../../lib/clickhouse-client';
+import { ClickhouseClient, QueryResult } from '../../lib/clickhouse-client';
 import { prettyFormatBytes } from '../../lib/formatting';
+// import { ClickhouseClient, TableStats } from '../lib/clickhouse-client';
+// import { prettyFormatNumber, prettyFormatBytes } from '../lib/formatting';
+
 
 interface SchemaPageProps {
   client: ClickhouseClient;
@@ -11,7 +14,7 @@ interface SchemaPageProps {
 }
 
 interface SchemaPageState {
-  result: NewQueryResult | null;
+  result: QueryResult | null;
 }
 
 export class SchemaPage extends React.Component {
@@ -40,7 +43,7 @@ export class SchemaPage extends React.Component {
         data_uncompressed_bytes as uncompressed
       FROM system.columns
       WHERE database='${databaseName}' AND table='${tableName}'
-    `);
+    `).get();
     this.setState({result});
   }
 
@@ -77,6 +80,75 @@ export class SchemaPage extends React.Component {
         <div id="output" style={{position: 'initial'}}>
           <div className="wrapper">
             {body}
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+interface SchemaPageSideBarProps {
+  client: ClickhouseClient;
+  setTableName: (tableName: string) => void;
+  databaseName: string;
+  tableName: string;
+}
+
+interface SchemaPageSideBarState {
+  tables: Array<string>;
+}
+
+export class SchemaPageSideBar extends React.Component {
+  props: SchemaPageSideBarProps;
+  state: SchemaPageSideBarState;
+
+  constructor(props: SchemaPageSideBarProps) {
+    super(props);
+    this.state = {
+      tables: [],
+    };
+  }
+
+  async componentWillMount() {
+    const tables = await this.props.client.getTables('default');
+
+    this.setState({
+      tables: tables.map((table) => table.name),
+    });
+  }
+
+  onTableClick(tableName: string) {
+    this.props.setTableName(tableName);
+  }
+
+  render() {
+    const tables = this.state.tables;
+
+    let listItems = [];
+
+    for (const tableName of tables) {
+      listItems.push(
+        <li
+            className={tableName === this.props.tableName ? 'active' : ''}
+            onClick={() => this.onTableClick(tableName)}
+            key={tableName}
+        >
+          <i className="fa fa-table" />
+          {tableName}
+        </li>
+      );
+    }
+
+    return (
+      <div id="sidebar">
+        <div className="tables-list">
+          <div className="wrap">
+            <div className="title main">
+              <span className="current-database">{this.props.databaseName}</span>
+            </div>
+            <div className="tables">
+              <ul>{listItems}</ul>
+            </div>
           </div>
         </div>
       </div>

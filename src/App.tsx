@@ -4,13 +4,13 @@ import './assets/font-awesome.css';
 import './assets/App.css';
 
 import { NavBar, PageType } from './components/navbar';
-import { SideBar }  from './components/sidebar';
+// import { SideBar }  from './components/sidebar';
 import { ConnectionDialog } from './components/connection';
 
-import { QueryPage } from './components/pages/query';
-import { SchemaPage } from './components/pages/schema';
+import { QueryPage, QueryPageSideBar } from './components/pages/query';
+import { SchemaPage, SchemaPageSideBar } from './components/pages/schema';
 
-import { ClickhouseClient, NewQueryResult, QueryProgress } from './lib/clickhouse-client';
+import { ClickhouseClient, QueryResult, QueryProgress } from './lib/clickhouse-client';
 
 interface AppState {
   client: ClickhouseClient | null;
@@ -21,7 +21,7 @@ interface AppState {
 
   queryContents: string;
   queryExecuting: boolean;
-  queryResult: NewQueryResult | null;
+  queryResult: QueryResult | null;
   queryError: string | null;
   queryProgress: QueryProgress | null;
 }
@@ -37,11 +37,11 @@ class App extends React.Component {
     const cachedConnectionOpts = window.localStorage.getItem('conn');
     if (cachedConnectionOpts) {
       let connectionOpts = JSON.parse(cachedConnectionOpts);
-      client = new ClickhouseClient(connectionOpts[0], connectionOpts[1], connectionOpts[2]);
+      client = new ClickhouseClient(connectionOpts[0], connectionOpts[1], connectionOpts[2], connectionOpts[3]);
     }
 
     this.state = {
-      client: client, // new ClickhouseClient('http://127.0.0.1:8123/'),
+      client: client,
       page: PageType.QUERY,
       databaseName: 'default',
       tableName: null,
@@ -67,7 +67,8 @@ class App extends React.Component {
         this.state.databaseName,
         (progress: QueryProgress) => {
           this.setState({queryProgress: progress});
-    });
+        }
+      ).get();
 
       this.setState({
         queryResult: result,
@@ -85,14 +86,14 @@ class App extends React.Component {
     }
   }
 
-  connect(url: string, username: string | null, password: string | null) {
-    const client = new ClickhouseClient(url);
+  connect(apiURL: string, url: string, username?: string, password?: string) {
+    const client = new ClickhouseClient(apiURL, url, username, password);
 
     this.setState({
       client: client,
     });
 
-    window.localStorage.setItem('conn', JSON.stringify([url, username, password]));
+    window.localStorage.setItem('conn', JSON.stringify([apiURL, url, username, password]));
   }
 
   disconnect() {
@@ -119,6 +120,8 @@ class App extends React.Component {
     }
 
     let page;
+    let sidebar;
+
     switch (this.state.page) {
       case PageType.QUERY:
         page = (
@@ -132,11 +135,24 @@ class App extends React.Component {
             queryProgress={this.state.queryProgress}
           />
         );
+
+        sidebar = (
+          <QueryPageSideBar />
+        );
         break;
       case PageType.SCHEMA:
         page = (
           <SchemaPage
             client={this.state.client}
+            databaseName={this.state.databaseName}
+            tableName={this.state.tableName || ''}
+          />
+        );
+
+        sidebar = (
+          <SchemaPageSideBar
+            client={this.state.client}
+            setTableName={setTableName}
             databaseName={this.state.databaseName}
             tableName={this.state.tableName || ''}
           />
@@ -153,12 +169,7 @@ class App extends React.Component {
           setPage={setPage}
           disconnect={disconnect}
         />
-        <SideBar
-          client={this.state.client}
-          setTableName={setTableName}
-          databaseName={this.state.databaseName}
-          tableName={this.state.tableName || ''}
-        />
+        {sidebar}
         {page}
       </div>
     );

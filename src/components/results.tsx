@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { NewQueryResult } from '../lib/clickhouse-client';
+import { QueryResult } from '../lib/clickhouse-client';
 
 // const numericalTypes = [
 //   'UInt8',
@@ -20,7 +20,7 @@ interface FieldFormatters {
 }
 
 interface ResultsProps {
-  result: NewQueryResult | null;
+  result: QueryResult | null;
   queryError: string | null;
   fieldFormatters: FieldFormatters | null;
 }
@@ -68,12 +68,20 @@ export class Results extends React.Component {
   render() {
     if (this.props.queryError !== null) {
       return (
-        <div>
+        <div className="query-error">
           <pre>{String(this.props.queryError)}</pre>
         </div>
       );
     } else if (this.props.result == null) {
       return <div />;
+    } else if (this.props.result.error !== null) {
+      const error = this.props.result.error;
+      return (
+        <div className="query-error">
+          <h3>Error: {error.code}</h3>
+          <pre>{error.message}</pre>
+        </div>
+      );
     }
 
     const result = this.props.result;
@@ -82,8 +90,6 @@ export class Results extends React.Component {
     });
 
     const columnNameIndexes = result.columns.map((col) => { return col.name; });
-
-    // TODO: sorting
 
     let fieldFormatters = {};
     if (this.props.fieldFormatters) {

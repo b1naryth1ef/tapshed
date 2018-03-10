@@ -1,5 +1,3 @@
-// import axios from 'axios';
-
 export interface TableInfo {
   database: string;
   engine: string;
@@ -18,9 +16,22 @@ export interface ColumnInfo {
   type: string;
 }
 
-export interface NewQueryResult {
+export interface QueryResultStats {
+  rows: number;
+  bytes: number;
+  duration: number;
+}
+
+export interface QueryResultError {
+  code: number;
+  message: string;
+}
+
+export interface QueryResult {
   columns: ReadonlyArray<ColumnInfo>;
   rows: ReadonlyArray<any>;
+  error: QueryResultError | null;
+  stats: QueryResultStats | null;
 }
 
 export interface QueryProgress {
@@ -30,7 +41,7 @@ export interface QueryProgress {
 
 type QueryProgressFunction = (progress: QueryProgress) => void;
 
-export function getResultAsObjects(result: NewQueryResult): ReadonlyArray<TableInfo> {
+export function getResultAsObjects(result: QueryResult): ReadonlyArray<TableInfo> {
   let objects = result.rows.map((row) => {
     let obj = {};
     for (let [idx, columnInfo] of result.columns.entries()) {
@@ -42,25 +53,44 @@ export function getResultAsObjects(result: NewQueryResult): ReadonlyArray<TableI
   return (objects as ReadonlyArray<TableInfo>);
 }
 
+export class ExecutingQuery {
+  private source: EventSource;
+  private promise: Promise<QueryResult>;
+
+  constructor(source: EventSource, promise: Promise<QueryResult>) {
+    this.source = source;
+    this.promise = promise;
+  }
+
+  cancel() {
+    this.source.close();
+  }
+
+  get(): Promise<QueryResult> {
+    return this.promise;
+  }
+}
 
 export class ClickhouseClient {
+  apiURL: string;
   url: string;
   username: string | null;
   password: string | null;
 
-  constructor(url: string, username?: string, password?: string) {
+  constructor(apiURL: string, url: string, username?: string, password?: string) {
+    this.apiURL = apiURL;
     this.url = url;
     this.username = username || null;
     this.password = password || null;
   }
 
   async getDatabases() {
-    let result = await this.executeQuery(`SELECT name FROM system.databases`);
+    let result = await this.executeQuery(`SELECT name FROM system.databases`).get();
     return result.rows.map((row) => row[0]);
   }
 
   async getTables(database: string): Promise<ReadonlyArray<TableInfo>> {
-    let result = await this.executeQuery(`SELECT * FROM system.tables WHERE database='${database}'`);
+    let result = await this.executeQuery(`SELECT * FROM system.tables WHERE database='${database}'`).get();
     return getResultAsObjects(result);
   }
 
@@ -74,7 +104,7 @@ export class ClickhouseClient {
         WHERE
           database='${database}'
           AND table='${table}'`
-    );
+    ).get();
 
     if (result.rows.length === 0) {
       return null;
@@ -87,15 +117,17 @@ export class ClickhouseClient {
     };
   }
 
-  async executeQueryRaw(
-        query: string,
-        database: string = 'default',
-        onProgress: QueryProgressFunction | null = null
-      ): Promise<any> {
-    const url = this.url + `/query?database=${encodeURIComponent(database)}&query=${encodeURIComponent(query)}`;
+  executeQueryRaw(
+      query: string, database: string = 'default', onProgress: QueryProgressFunction | null = null): ExecutingQuery {
+
+    const url = this.apiURL + `/query?` +
+      `database=${encodeURIComponent(database)}` +
+      `&query=${encodeURIComponent(query)}` +
+      `&url=${encodeURIComponent(this.url)}`;
+
     const source = new EventSource(url);
 
-    return new Promise((resolve, reject) => {
+    const promise = new Promise<QueryResult>((resolve, reject) => {
       source.addEventListener('progress', (e: any) => {
         const data = JSON.parse(e.data);
         if (onProgress) {
@@ -113,57 +145,15 @@ export class ClickhouseClient {
         reject();
       };
     });
+
+    return new ExecutingQuery(source, promise);
   }
 
-  async executeQuery(
+  executeQuery(
         query: string,
         database: string = 'default',
         onProgress: QueryProgressFunction | null = null
-      ): Promise<NewQueryResult> {
-    return this.executeQueryRaw(query, database, onProgress) as Promise<NewQueryResult>;
-  }
-}
-
-export class Query {
-  onProgress: QueryProgressFunction | null;
-
-  private client: ClickhouseClient;
-  private eventSource: EventSource;
-  private result: Promise<NewQueryResult>;
-
-  constructor(client: ClickhouseClient, query: string, onProgress: QueryProgressFunction | null = null) {
-    this.client = client;
-    this.onProgress = onProgress;
-
-    const url = this.client.url + `/query?query=${encodeURIComponent(query)}`;
-    this.eventSource = new EventSource(url);
-
-    // Track progress
-    this.eventSource.addEventListener('progress', (e: any) => {
-      const data = JSON.parse(e.data);
-      if (this.onProgress) {
-        this.onProgress(data);
-      }
-    });
-
-    this.result = new Promise((resolve, reject) => {
-      this.eventSource.addEventListener('result', (e: any) => {
-        const data = JSON.parse(e.data);
-        resolve(data);
-      });
-
-      this.eventSource.onerror = (event: any) => {
-        this.eventSource.close();
-        reject(event.error);
-      };
-    });
-  }
-
-  get() {
-    return this.result;
-  }
-
-  cancel() {
-    this.eventSource.close();
+      ): ExecutingQuery {
+    return this.executeQueryRaw(query, database, onProgress);
   }
 }

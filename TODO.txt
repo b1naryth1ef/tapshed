@@ -1,19 +1,25 @@
-== misc tasks ==
+== Query Editor ==
+
+- Formatting
+- Support multiple tabs with query saving
+  - Tabs should cache their query and result
+  - Query saving, via:
+    - local storage
+    - clickhouse table
+    - backend?
+- Support for "live tail" mode, auto-refresh of a specific query
+- Progress bar support
+  - Use system.processes table and poll (performance?)
+  - backend w/ tcp client proxy
+
+== Graphing ==
+
+- Query editor + simple grapher
+
+== Misc ==
 
 - handle integers / bigints in results
 - better client-side formatting of things
 - export as json / csv / etc
 - look into progress bar support
 - query cancel support
-
-== saving ==
-- ability to save queries
-  - firebase?
-  - local only?
-
-== graphing ==
-- simple graphs;
-  - line
-  - pie
-- saved graphs
-- dashboards

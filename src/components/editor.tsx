@@ -4,8 +4,8 @@ import 'brace/theme/tomorrow';
 
 import { CSVWriter } from '../lib/csv';
 
-import { ClickhouseClient, NewQueryResult, getResultAsObjects } from '../lib/clickhouse-client';
-// import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
+import { ClickhouseClient, QueryResult, getResultAsObjects } from '../lib/clickhouse-client';
+import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
 import { ClickhouseAceMode } from '../lib/clickhouse-ace-mode';
 
 function makeRandom(size: number) {
@@ -22,7 +22,6 @@ function makeRandom(size: number) {
 function download(filename: string, dataType: string, data: string) {
   let element = document.createElement('a');
   element.setAttribute('href', window.URL.createObjectURL(new Blob([data], {type: dataType})));
-  // element.setAttribute('href', `data:${dataType};charset=utf-8,` + encodeURIComponent(data));
   element.setAttribute('download', filename);
 
   element.style.display = 'none';
@@ -34,7 +33,7 @@ function download(filename: string, dataType: string, data: string) {
 interface EditorActionsProps {
   executeQuery: () => void;
   queryExecuting: boolean;
-  queryResult: NewQueryResult | null;
+  queryResult: QueryResult | null;
   queryError: string | null;
   client: ClickhouseClient;
   contents: string;
@@ -71,13 +70,12 @@ export class EditorActions extends React.Component {
       resultText = 'executing query...';
     } else if (this.props.queryError) {
       resultText = <span className="query-error">Error!</span>;
-    } else if (this.props.queryResult != null) {
-      // const result = this.props.queryResult;
-      // TODO(NewQueryResult)
-      // let statsText = `${prettyFormatSeconds(result.statistics.elapsed)}s, `;
-      // statsText += `${prettyFormatNumber(result.statistics.rows_read)} rows, `;
-      // statsText += `${prettyFormatBytes(result.statistics.bytes_read)}`;
-      // resultText = `${result.rows} rows returned (${statsText})`;
+    } else if (this.props.queryResult != null && this.props.queryResult.stats) {
+      const stats = this.props.queryResult.stats;
+      let statsText = `${prettyFormatSeconds(stats.duration / 1000)}s, `;
+      statsText += `${prettyFormatNumber(stats.rows)} rows, `;
+      statsText += `${prettyFormatBytes(stats.bytes)}`;
+      resultText = `${this.props.queryResult.rows.length} rows returned (${statsText})`;
     }
 
     return (
@@ -122,7 +120,7 @@ interface EditorProps {
   executeQuery: (query: string) => void;
   contents: string;
   queryExecuting: boolean;
-  queryResult: NewQueryResult | null;
+  queryResult: QueryResult | null;
   queryError: string | null;
 }
 

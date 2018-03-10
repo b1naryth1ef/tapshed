@@ -1,10 +1,11 @@
 import * as React from 'react';
 
 interface ConnectionFormProps {
-  connect: (url: string, username: string | null, password: string | null) => null;
+  connect: (apiURL: string, url: string, username: string | null, password: string | null) => null;
 }
 
 interface ConnectionFormState {
+  apiURL: string;
   url: string;
   username: string;
   password: string;
@@ -17,7 +18,8 @@ class ConnectionForm extends React.Component {
   constructor(props: ConnectionFormProps) {
     super(props);
     this.state = {
-      url: 'http://localhost:8123',
+      apiURL: `${window.location.protocol}//${window.location.host}/api`,
+      url: 'ch://localhost:9000',
       username: '',
       password: '',
     };
@@ -25,7 +27,7 @@ class ConnectionForm extends React.Component {
 
   onSubmit(e: any) {
     e.preventDefault();
-    this.props.connect(this.state.url, this.state.username || null, this.state.password || null);
+    this.props.connect(this.state.apiURL, this.state.url, this.state.username || null, this.state.password || null);
   }
 
   onChange(e: any) {
@@ -42,7 +44,13 @@ class ConnectionForm extends React.Component {
       <form role="form" className="form-horizontal" id="connection_form" onSubmit={onSubmit}>
         <div style={{display: 'block'}}>
           <div className="form-group">
-            <label className="col-sm-3 control-label">URL</label>
+            <label className="col-sm-3 control-label">API URL</label>
+            <div className="col-sm-9">
+              <input id="apiURL" type="text" className="form-control" onChange={onChange} value={this.state.apiURL} />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="col-sm-3 control-label">Clickhouse URL</label>
             <div className="col-sm-9">
               <input id="url" type="text" className="form-control" onChange={onChange} value={this.state.url} />
             </div>

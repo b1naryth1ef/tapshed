@@ -746,3 +746,19 @@
 span.query-error {
   color: #a94442;
 }
+
+.query-error pre {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+div.query-error {
+  margin-left: 5%;
+  max-width: 90%;
+}
+
+div.progress {
+  margin-left: 1%;
+  max-width: 98%;
+  margin-top: 1%;
+}
