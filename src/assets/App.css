@@ -762,3 +762,8 @@ div.progress {
   max-width: 98%;
   margin-top: 1%;
 }
+
+hr {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}

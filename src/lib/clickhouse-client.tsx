@@ -39,6 +39,12 @@ export interface QueryProgress {
   total_rows: number;
 }
 
+export interface SavedQuery {
+  name: string;
+  contents: string;
+  edited: boolean;
+}
+
 type QueryProgressFunction = (progress: QueryProgress) => void;
 
 export function getResultAsObjects(result: QueryResult): ReadonlyArray<TableInfo> {
@@ -82,6 +88,12 @@ export class ClickhouseClient {
     this.url = url;
     this.username = username || null;
     this.password = password || null;
+  }
+
+  getSavedQueries() {
+    return {
+      'Saved Query 1': {name: 'Saved Query 1', contents: 'SELECT count(*) FROM system.tables', edited: false},
+    };
   }
 
   async getDatabases() {

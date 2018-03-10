@@ -7,17 +7,7 @@ import { CSVWriter } from '../lib/csv';
 import { ClickhouseClient, QueryResult, getResultAsObjects } from '../lib/clickhouse-client';
 import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
 import { ClickhouseAceMode } from '../lib/clickhouse-ace-mode';
-
-function makeRandom(size: number) {
-  let text = '';
-  let possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < size; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
-}
+import { makeRandom } from '../lib/random';
 
 function download(filename: string, dataType: string, data: string) {
   let element = document.createElement('a');
@@ -117,6 +107,7 @@ export class EditorActions extends React.Component {
 
 interface EditorProps {
   client: ClickhouseClient;
+  setQueryContents: (query: string) => void;
   executeQuery: (query: string) => void;
   contents: string;
   queryExecuting: boolean;
@@ -127,11 +118,9 @@ interface EditorProps {
 export class Editor extends React.Component {
   props: EditorProps;
   private aceRef: any;
-  private contents: string;
 
   constructor(props: EditorProps) {
     super(props);
-    this.contents = props.contents;
   }
 
   componentDidMount() {
@@ -139,9 +128,6 @@ export class Editor extends React.Component {
     this.aceRef.editor.getSession().setMode(mode);
   }
 
-  onEditorChange = (newValue: string) => {
-    this.contents = newValue;
-  }
 
   render() {
     const commands = [
@@ -151,7 +137,7 @@ export class Editor extends React.Component {
           win: 'Ctrl-Enter',
           mac: 'Command-Enter',
         },
-        exec: () => this.props.executeQuery(this.contents),
+        exec: () => this.props.executeQuery(this.props.contents),
       }
     ];
 
@@ -168,12 +154,12 @@ export class Editor extends React.Component {
             useSoftTabs: true,
           }}
           commands={commands}
-          onChange={this.onEditorChange}
-          value={this.contents}
+          onChange={this.props.setQueryContents}
+          value={this.props.contents}
           ref={(ref) => { this.aceRef = ref; }}
         />
         <EditorActions
-          executeQuery={() => this.props.executeQuery(this.contents)}
+          executeQuery={() => this.props.executeQuery(this.props.contents)}
           queryResult={this.props.queryResult}
           queryExecuting={this.props.queryExecuting}
           queryError={this.props.queryError}

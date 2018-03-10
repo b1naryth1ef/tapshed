@@ -45,7 +45,7 @@ class App extends React.Component {
       page: PageType.QUERY,
       databaseName: 'default',
       tableName: null,
-      queryContents: window.localStorage.getItem('cached-query') || '',
+      queryContents: '',
       queryExecuting: false,
       queryResult: null,
       queryError: null,
@@ -114,6 +114,7 @@ class App extends React.Component {
     const setPage = this.setPage.bind(this);
     const connect = this.connect.bind(this);
     const disconnect = this.disconnect.bind(this);
+    const setQueryContents = (contents: string) => { this.setState({queryContents: contents}); };
 
     if (this.state.client === null) {
       return <ConnectionDialog connect={connect} />;
@@ -128,6 +129,7 @@ class App extends React.Component {
           <QueryPage
             client={this.state.client}
             executeQuery={executeQuery}
+            setQueryContents={setQueryContents}
             queryContents={this.state.queryContents}
             queryExecuting={this.state.queryExecuting}
             queryResult={this.state.queryResult}
@@ -137,7 +139,11 @@ class App extends React.Component {
         );
 
         sidebar = (
-          <QueryPageSideBar />
+          <QueryPageSideBar
+            client={this.state.client}
+            queryContents={this.state.queryContents}
+            setQueryContents={setQueryContents}
+          />
         );
         break;
       case PageType.SCHEMA:
