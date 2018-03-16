@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { store } from 'statorgfc';
+
 import './assets/Bootstrap.css';
 import './assets/font-awesome.css';
 import './assets/App.css';
@@ -10,6 +12,7 @@ import { ConnectionDialog } from './components/connection';
 import { QueryPage, QueryPageSideBar } from './components/pages/query';
 import { SchemaPage, SchemaPageSideBar } from './components/pages/schema';
 
+import { Tab } from './lib/tab';
 import { ClickhouseClient, QueryResult, QueryProgress } from './lib/clickhouse-client';
 
 interface AppState {
@@ -32,16 +35,8 @@ class App extends React.Component {
   constructor(props: Object) {
     super(props);
 
-    let client: ClickhouseClient | null = null;
-
-    const cachedConnectionOpts = window.localStorage.getItem('conn');
-    if (cachedConnectionOpts) {
-      let connectionOpts = JSON.parse(cachedConnectionOpts);
-      client = new ClickhouseClient(connectionOpts[0], connectionOpts[1], connectionOpts[2], connectionOpts[3]);
-    }
-
     this.state = {
-      client: client,
+      client: null,
       page: PageType.QUERY,
       databaseName: 'default',
       tableName: null,
@@ -51,6 +46,12 @@ class App extends React.Component {
       queryError: null,
       queryProgress: null,
     };
+
+    const cachedConnectionOpts = window.localStorage.getItem('conn');
+    if (cachedConnectionOpts) {
+      let connectionOpts = JSON.parse(cachedConnectionOpts);
+      this.connect(connectionOpts[0], connectionOpts[1], connectionOpts[2], connectionOpts[3], true);
+    }
   }
 
   async executeQuery(query: string) {
@@ -86,12 +87,26 @@ class App extends React.Component {
     }
   }
 
-  connect(apiURL: string, url: string, username?: string, password?: string) {
+  async connect(apiURL: string, url: string, username?: string, password?: string, direct?: boolean) {
     const client = new ClickhouseClient(apiURL, url, username, password);
 
-    this.setState({
-      client: client,
-    });
+    if (direct === true) {
+      this.state.client = client;
+    } else {
+      this.setState({
+        client: client,
+      });
+    }
+
+    // After connection we load some stuff
+    const savedQueries = await client.getSavedQueries();
+    let tabs = Object.assign({}, store.get('tabs'));
+
+    for (const savedQuery of savedQueries) {
+      tabs[savedQuery.name] = new Tab(savedQuery.name, true, savedQuery.contents);
+    }
+
+    store.set({tabs: tabs, client: client});
 
     window.localStorage.setItem('conn', JSON.stringify([apiURL, url, username, password]));
   }
@@ -109,12 +124,10 @@ class App extends React.Component {
   }
 
   render() {
-    const executeQuery = this.executeQuery.bind(this);
     const setTableName = this.setTableName.bind(this);
     const setPage = this.setPage.bind(this);
     const connect = this.connect.bind(this);
     const disconnect = this.disconnect.bind(this);
-    const setQueryContents = (contents: string) => { this.setState({queryContents: contents}); };
 
     if (this.state.client === null) {
       return <ConnectionDialog connect={connect} />;
@@ -126,24 +139,11 @@ class App extends React.Component {
     switch (this.state.page) {
       case PageType.QUERY:
         page = (
-          <QueryPage
-            client={this.state.client}
-            executeQuery={executeQuery}
-            setQueryContents={setQueryContents}
-            queryContents={this.state.queryContents}
-            queryExecuting={this.state.queryExecuting}
-            queryResult={this.state.queryResult}
-            queryError={this.state.queryError}
-            queryProgress={this.state.queryProgress}
-          />
+          <QueryPage />
         );
 
         sidebar = (
-          <QueryPageSideBar
-            client={this.state.client}
-            queryContents={this.state.queryContents}
-            setQueryContents={setQueryContents}
-          />
+          <QueryPageSideBar />
         );
         break;
       case PageType.SCHEMA:

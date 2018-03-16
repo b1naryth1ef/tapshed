@@ -21,7 +21,6 @@ interface FieldFormatters {
 
 interface ResultsProps {
   result: QueryResult | null;
-  queryError: string | null;
   fieldFormatters: FieldFormatters | null;
 }
 
@@ -66,13 +65,7 @@ export class Results extends React.Component {
   }
 
   render() {
-    if (this.props.queryError !== null) {
-      return (
-        <div className="query-error">
-          <pre>{String(this.props.queryError)}</pre>
-        </div>
-      );
-    } else if (this.props.result == null) {
+    if (this.props.result == null) {
       return <div />;
     } else if (this.props.result.error !== null) {
       const error = this.props.result.error;

@@ -1,29 +1,35 @@
 import * as React from 'react';
+import { store } from 'statorgfc';
 
+import { Tab } from '../../lib/tab';
 import { Editor } from '../editor';
 import { Results } from '../results';
-import { ClickhouseClient, QueryResult, QueryProgress, SavedQuery } from '../../lib/clickhouse-client';
 import { makeRandom } from '../../lib/random';
 
-interface QueryPageProps {
-  executeQuery: (query: string) => void;
-  setQueryContents: (query: string) => void;
-  queryContents: string;
-  queryExecuting: boolean;
-  queryResult: QueryResult | null;
-  queryError: string | null;
-  queryProgress: QueryProgress | null;
-  client: ClickhouseClient;
+interface QueryPageState {
+  currentTab: Tab | null;
 }
 
 export class QueryPage extends React.Component {
-  props: QueryPageProps;
+  state: QueryPageState;
+
+  constructor(props: any) {
+    super(props);
+
+    store.connectComponentState(this, ['currentTab']);
+  }
 
   render() {
+    const currentTab = this.state.currentTab;
+
+    if (!currentTab) {
+      return <div />;
+    }
+
     let queryProgress = null;
-    if (this.props.queryProgress) {
+    if (currentTab.queryProgress) {
       let queryProgressPercentage = (
-        this.props.queryProgress.num_rows / this.props.queryProgress.total_rows
+        currentTab.queryProgress.num_rows / currentTab.queryProgress.total_rows
       ) * 100;
 
       queryProgress = (
@@ -39,24 +45,15 @@ export class QueryPage extends React.Component {
       <div id="body">
         <div id="input">
           <div className="wrapper">
-            <Editor
-              executeQuery={this.props.executeQuery}
-              setQueryContents={this.props.setQueryContents}
-              contents={this.props.queryContents}
-              queryResult={this.props.queryResult}
-              queryExecuting={this.props.queryExecuting}
-              queryError={this.props.queryError}
-              client={this.props.client}
-            />
+            <Editor currentTab={currentTab} />
           </div>
         </div>
         <div id="output">
           {queryProgress}
           <div className="wrapper">
             <Results
-              result={this.props.queryResult}
+              result={currentTab.queryResult}
               fieldFormatters={null}
-              queryError={this.props.queryError}
             />
           </div>
         </div>
@@ -66,108 +63,60 @@ export class QueryPage extends React.Component {
 }
 
 
-interface QueryPageSideBarProps {
-  client: ClickhouseClient;
-  queryContents: string;
-  setQueryContents: (query: string) => void;
-}
-
 interface QueryPageSideBarState {
-  openQueries: ReadonlyArray<string>;
-  savedQueries: { [key: string]: SavedQuery };
-  currentQuery: string | null;
+  tabs: { [key: string]: Tab };
+  openTabs: ReadonlyArray<string>;
+  currentTab: Tab | null;
 }
 
 // Create a store for this
 export class QueryPageSideBar extends React.Component {
-  props: QueryPageSideBarProps;
   state: QueryPageSideBarState;
 
-  constructor(props: QueryPageSideBarProps) {
+  constructor(props: any) {
     super(props);
 
-    this.state = {
-      currentQuery: null,
-      openQueries: [],
-      savedQueries: {},
-    };
+    store.connectComponentState(this, ['tabs', 'currentTab']);
   }
 
-  componentWillMount() {
-    this.setState({
-      savedQueries: this.props.client.getSavedQueries()
-    });
+  selectTab(name: string) {
+    store.set({currentTab: this.state.tabs[name]});
   }
 
-  componentWillUpdate(nextProps: QueryPageSideBarProps, nextState: QueryPageSideBarState) {
-    if (this.props.queryContents !== nextProps.queryContents && this.state.currentQuery === nextState.currentQuery) {
-      if (this.state.currentQuery) {
-        this.state.savedQueries[this.state.currentQuery].contents = nextProps.queryContents;
-      }
-    }
-  }
-
-  addQuery() {
-    const queryName = `New Query ${makeRandom(6)}`;
-
-    let savedQueries = Object.assign({}, this.state.savedQueries);
-    savedQueries[queryName] = {
-      name: `New Query ${makeRandom(6)}`,
-      contents: '',
-      edited: true,
-    };
-
-    // Copy open queries
-    let openQueries = this.state.openQueries.slice(0);
-    openQueries.push(queryName);
-    this.setState({openQueries: openQueries, savedQueries: savedQueries});
-  }
-
-  openQuery(name: string) {
-    let openQueries = this.state.openQueries.slice(0);
-    openQueries.push(name);
-    this.props.setQueryContents(this.state.savedQueries[name].contents);
-    this.setState({openQueries: openQueries, currentQuery: name});
-  }
-
-  selectQuery(name: string) {
-    this.props.setQueryContents(this.state.savedQueries[name].contents);
-    this.setState({currentQuery: name});
+  openNewTab() {
+    const newTabName = `New Tab ${makeRandom(6)}`;
+    let tabs = Object.assign({}, this.state.tabs);
+    tabs[newTabName] = new Tab(newTabName, false, '');
+    store.set({tabs: tabs, currentTab: tabs[newTabName]});
   }
 
   render() {
     let tabs = [];
 
-    tabs.push(<li key="open-queries"><b>Open Queries</b></li>);
-    for (const queryName of this.state.openQueries) {
-      const selected = (queryName === this.state.currentQuery);
-      tabs.push(
-        <li key={queryName} className={selected ? 'active' : ''} onClick={() => { this.selectQuery(queryName); }}>
-          <i className="fa fa-file" />
-          {queryName}
-        </li>
-      );
-    }
-
     tabs.push(<hr key="hr-1" />);
     tabs.push(<li key="saved-queries"><b>Saved Queries</b></li>);
-    for (const queryName of Object.keys(this.state.savedQueries)) {
-      if (this.state.openQueries.indexOf(queryName) !== -1) {
-        continue;
-      }
+
+
+    let keys = Object.keys(this.state.tabs);
+    keys.sort();
+    for (const queryName of keys) {
+      const selected = (this.state.currentTab && queryName === this.state.currentTab.name);
+      const iconName = (
+        (this.state.tabs[queryName].queryResult !== null) ? 'fa-asterisk' : 'fa-file'
+      );
       tabs.push(
-        <li key={queryName} onClick={() => { this.openQuery(queryName); }}>
-          <i className="fa fa-file" />
-          {queryName}
+        <li key={queryName} className={selected ? 'active' : ''} onClick={() => { this.selectTab(queryName); }}>
+          <i className={`fa ${iconName}`} />
+          {this.state.tabs[queryName].dirty ? <b>*</b> : ''}{queryName}
         </li>
       );
     }
 
     tabs.push(<hr key="hr-2" />);
     tabs.push(
-      <li key="open-new" onClick={() => { this.addQuery(); }}>
+      <li key="open-new" onClick={() => { this.openNewTab(); }}>
         <i className="fa fa-plus" />
-        Open New Query
+        <b>Open New Query</b>
       </li>
     );
 

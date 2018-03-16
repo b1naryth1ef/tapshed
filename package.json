@@ -5,11 +5,13 @@
   "dependencies": {
     "axios": "^0.18.0",
     "bytes": "^3.0.0",
+    "dexie": "^2.0.2",
     "react": "^16.2.0",
     "react-ace": "^5.9.0",
     "react-dom": "^16.2.0",
     "react-scripts-ts": "2.13.0",
-    "sql-formatter": "^2.1.2"
+    "sql-formatter": "^2.1.2",
+    "statorgfc": "^0.1.6"
   },
   "scripts": {
     "start": "react-scripts-ts start",

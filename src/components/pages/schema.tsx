@@ -3,8 +3,6 @@ import * as React from 'react';
 import { Results } from '../results';
 import { ClickhouseClient, QueryResult } from '../../lib/clickhouse-client';
 import { prettyFormatBytes } from '../../lib/formatting';
-// import { ClickhouseClient, TableStats } from '../lib/clickhouse-client';
-// import { prettyFormatNumber, prettyFormatBytes } from '../lib/formatting';
 
 
 interface SchemaPageProps {
@@ -70,7 +68,7 @@ export class SchemaPage extends React.Component {
     if (!this.props.databaseName || !this.props.tableName) {
       body = <h3>Select a table...</h3>;
     } else if (this.state.result !== null) {
-      body = <Results result={this.state.result} fieldFormatters={fieldFormatters} queryError={null} />;
+      body = <Results result={this.state.result} fieldFormatters={fieldFormatters} />;
     } else {
       body = <h3>Loading...</h3>;
     }

@@ -2,9 +2,10 @@ import * as React from 'react';
 import AceEditor from 'react-ace';
 import 'brace/theme/tomorrow';
 
+import { Tab } from '../lib/tab';
 import { CSVWriter } from '../lib/csv';
 
-import { ClickhouseClient, QueryResult, getResultAsObjects } from '../lib/clickhouse-client';
+import { getResultAsObjects } from '../lib/clickhouse-client';
 import { prettyFormatNumber, prettyFormatSeconds, prettyFormatBytes } from '../lib/formatting';
 import { ClickhouseAceMode } from '../lib/clickhouse-ace-mode';
 import { makeRandom } from '../lib/random';
@@ -21,32 +22,26 @@ function download(filename: string, dataType: string, data: string) {
 }
 
 interface EditorActionsProps {
-  executeQuery: () => void;
-  queryExecuting: boolean;
-  queryResult: QueryResult | null;
-  queryError: string | null;
-  client: ClickhouseClient;
-  contents: string;
+  currentTab: Tab;
 }
 
 export class EditorActions extends React.Component {
   props: EditorActionsProps;
 
-  // TODO(NewQueryResult): convert all these to do data manipulation in-browser
   async exportJSON() {
-    if (this.props.queryResult) {
-      const obj = getResultAsObjects(this.props.queryResult);
+    if (this.props.currentTab.queryResult) {
+      const obj = getResultAsObjects(this.props.currentTab.queryResult);
       download(`table-${makeRandom(6)}.json`, 'application/json', JSON.stringify(obj));
     }
   }
 
   async exportCSV() {
-    if (this.props.queryResult) {
+    if (this.props.currentTab.queryResult) {
       const writer = new CSVWriter;
 
-      writer.writeRow(this.props.queryResult.columns.map((col) => { return col.name; }));
+      writer.writeRow(this.props.currentTab.queryResult.columns.map((col) => { return col.name; }));
 
-      for (const row of this.props.queryResult.rows) {
+      for (const row of this.props.currentTab.queryResult.rows) {
         writer.writeRow(row);
       }
       download(`table-${makeRandom(6)}.csv`, 'text/csv', writer.getData());
@@ -54,18 +49,35 @@ export class EditorActions extends React.Component {
   }
 
   render() {
+    const currentTab = this.props.currentTab;
+    const executing = (currentTab.queryProgress !== null);
     let resultText: string | JSX.Element = '';
 
-    if (this.props.queryExecuting) {
+
+    if (executing) {
       resultText = 'executing query...';
-    } else if (this.props.queryError) {
-      resultText = <span className="query-error">Error!</span>;
-    } else if (this.props.queryResult != null && this.props.queryResult.stats) {
-      const stats = this.props.queryResult.stats;
+    // } else if (this.props.queryError) {
+    //   resultText = <span className="query-error">Error!</span>;
+    } else if (currentTab.queryResult != null && currentTab.queryResult.stats) {
+      const stats = currentTab.queryResult.stats;
       let statsText = `${prettyFormatSeconds(stats.duration / 1000)}s, `;
       statsText += `${prettyFormatNumber(stats.rows)} rows, `;
       statsText += `${prettyFormatBytes(stats.bytes)}`;
-      resultText = `${this.props.queryResult.rows.length} rows returned (${statsText})`;
+      resultText = `${currentTab.queryResult.rows.length} rows returned (${statsText})`;
+    }
+
+    let deleteButton = null;
+    if (currentTab.saved) {
+      deleteButton =  (
+        <input
+          type="button"
+          id="delete"
+          value="Delete Query"
+          className="btn btn-sm btn-danger"
+          onClick={() => { this.props.currentTab.delete(); }}
+          disabled={executing}
+        />
+      );
     }
 
     return (
@@ -75,15 +87,30 @@ export class EditorActions extends React.Component {
           id="run"
           value="Run Query"
           className="btn btn-sm btn-primary"
-          disabled={this.props.queryExecuting}
-          onClick={this.props.executeQuery}
+          disabled={executing}
+          onClick={() => { this.props.currentTab.execute(); }}
         />
         <input
           type="button"
-          id="run"
+          id="save"
           value="Save Query"
           className="btn btn-sm btn-warning"
-          disabled={this.props.queryExecuting}
+          onClick={() => { this.props.currentTab.save(); }}
+          disabled={executing}
+        />
+        {deleteButton}
+        <input
+          type="button"
+          id="run"
+          value="Rename Query"
+          className="btn btn-sm btn-default"
+          disabled={executing}
+          onClick={() => { 
+            const newName = window.prompt('Query Name', this.props.currentTab.name);
+            if (newName) {
+              this.props.currentTab.setName(newName);
+            }
+          }}
         />
         <div className="pull-right">
           <span id="result-rows-count">{resultText}</span>
@@ -106,13 +133,7 @@ export class EditorActions extends React.Component {
 }
 
 interface EditorProps {
-  client: ClickhouseClient;
-  setQueryContents: (query: string) => void;
-  executeQuery: (query: string) => void;
-  contents: string;
-  queryExecuting: boolean;
-  queryResult: QueryResult | null;
-  queryError: string | null;
+  currentTab: Tab;
 }
 
 export class Editor extends React.Component {
@@ -130,6 +151,8 @@ export class Editor extends React.Component {
 
 
   render() {
+    const currentTab = this.props.currentTab;
+
     const commands = [
       {
         name: 'run_query',
@@ -137,7 +160,7 @@ export class Editor extends React.Component {
           win: 'Ctrl-Enter',
           mac: 'Command-Enter',
         },
-        exec: () => this.props.executeQuery(this.props.contents),
+        exec: () => this.props.currentTab.execute(),
       }
     ];
 
@@ -154,17 +177,12 @@ export class Editor extends React.Component {
             useSoftTabs: true,
           }}
           commands={commands}
-          onChange={this.props.setQueryContents}
-          value={this.props.contents}
+          onChange={(contents) => { this.props.currentTab.setContents(contents); }}
+          value={currentTab.queryContents}
           ref={(ref) => { this.aceRef = ref; }}
         />
         <EditorActions
-          executeQuery={() => this.props.executeQuery(this.props.contents)}
-          queryResult={this.props.queryResult}
-          queryExecuting={this.props.queryExecuting}
-          queryError={this.props.queryError}
-          client={this.props.client}
-          contents={this.props.contents}
+          currentTab={this.props.currentTab}
         />
       </div>
     );

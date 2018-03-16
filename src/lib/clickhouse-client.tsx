@@ -1,3 +1,5 @@
+import Dexie from 'dexie';
+
 export interface TableInfo {
   database: string;
   engine: string;
@@ -42,7 +44,6 @@ export interface QueryProgress {
 export interface SavedQuery {
   name: string;
   contents: string;
-  edited: boolean;
 }
 
 type QueryProgressFunction = (progress: QueryProgress) => void;
@@ -77,23 +78,44 @@ export class ExecutingQuery {
   }
 }
 
+
+class SavedQueriesDatabase extends Dexie {
+  queries: Dexie.Table<SavedQuery, string>;
+
+  constructor() {
+    super('SavedQueries');
+    this.version(1).stores({
+      queries: 'name,contents',
+    });
+  }
+}
+
 export class ClickhouseClient {
   apiURL: string;
   url: string;
   username: string | null;
   password: string | null;
+  private db: SavedQueriesDatabase;
 
   constructor(apiURL: string, url: string, username?: string, password?: string) {
     this.apiURL = apiURL;
     this.url = url;
     this.username = username || null;
     this.password = password || null;
+
+    this.db = new SavedQueriesDatabase;
   }
 
-  getSavedQueries() {
-    return {
-      'Saved Query 1': {name: 'Saved Query 1', contents: 'SELECT count(*) FROM system.tables', edited: false},
-    };
+  async saveSavedQuery(name: string, contents: string) {
+    await this.db.queries.put({name: name, contents: contents});
+  }
+
+  async deleteSavedQuery(name: string) {
+    await this.db.queries.where({name: name}).delete();
+  }
+
+  async getSavedQueries() {
+    return await this.db.queries.toArray();
   }
 
   async getDatabases() {
@@ -135,7 +157,8 @@ export class ClickhouseClient {
     const url = this.apiURL + `/query?` +
       `database=${encodeURIComponent(database)}` +
       `&query=${encodeURIComponent(query)}` +
-      `&url=${encodeURIComponent(this.url)}`;
+      `&url=${encodeURIComponent(this.url)}` +
+      `&progress=${onProgress !== null ? '1' : '0'}`;
 
     const source = new EventSource(url);
 

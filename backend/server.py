@@ -41,15 +41,21 @@ def query():
 
     try:
         start = time.time()
-        progress = ch_client.execute_with_progress(request.query.query, with_column_types=True)
-        for num_rows, num_bytes, total_rows in progress:
-            yield sse_pack(event_id, 'progress', {
-                'num_rows': num_rows,
-                'total_rows': total_rows,
-            })
-            event_id += 1
+        num_bytes = 0
 
-        rows, columns = progress.get_result()
+        if bool(int(request.query.get('progress', '1'))):
+            progress = ch_client.execute_with_progress(request.query.query, with_column_types=True)
+            for num_rows, num_bytes, total_rows in progress:
+                yield sse_pack(event_id, 'progress', {
+                    'num_rows': num_rows,
+                    'total_rows': total_rows,
+                })
+                event_id += 1
+
+            rows, columns = progress.get_result()
+        else:
+            rows, columns = ch_client.execute(request.query.query, with_column_types=True)
+
         yield sse_pack(event_id, 'result', {
             'rows': rows,
             'columns': [{'name': i[0], 'type': i[1]} for i in columns],

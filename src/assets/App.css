@@ -275,6 +275,11 @@
   color: #f0ad4e;
 }
 
+#input .actions .btn-danger {
+  color: #d9534f;
+  border-color: #d43f3a;
+}
+
 #input .actions .btn:hover {
   background: transparent !important;
   border-color: #444;
@@ -285,6 +290,7 @@
   color: #64903e;
   border-color: #64903e;
 }
+
 
 #input .actions #query_progress {
   display: none;
