@@ -121,6 +121,10 @@ export class Results extends React.Component {
           col = fieldFormatters[colIndex](col);
         }
 
+        if (col.toString !== undefined) {
+          col = col.toString();
+        }
+
         cols.push(<td key={result.columns[colIndex].name}>{col}</td>);
       }
 

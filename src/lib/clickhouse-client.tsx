@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import JSONbig from 'json-bigint';
 
 export interface TableInfo {
   database: string;
@@ -123,8 +124,19 @@ export class ClickhouseClient {
     return result.rows.map((row) => row[0]);
   }
 
-  async getTables(database: string): Promise<ReadonlyArray<TableInfo>> {
-    let result = await this.executeQuery(`SELECT * FROM system.tables WHERE database='${database}'`).get();
+  async getTables(database: string, localOnly: boolean = false): Promise<ReadonlyArray<TableInfo>> {
+    let result;
+
+    if (localOnly) {
+      result = await this.executeQuery(`
+        SELECT *
+        FROM system.tables
+        WHERE database='${database}' AND engine != 'Distributed'
+      `).get();
+    } else {
+      result = await this.executeQuery(`SELECT * FROM system.tables WHERE database='${database}'`).get();
+    }
+
     return getResultAsObjects(result);
   }
 
@@ -171,7 +183,8 @@ export class ClickhouseClient {
       });
 
       source.addEventListener('result', (e: any) => {
-        const data = JSON.parse(e.data);
+        const data = JSONbig.parse(e.data);
+        // const data = JSON.parse(e.data);
         resolve(data);
       });
 

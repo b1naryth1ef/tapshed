@@ -65,7 +65,7 @@ export class Tab extends Immutable {
       this.queryContents,
       store.get('databaseName'),
       (progress: QueryProgress) => {
-        this.update({queryProgress: progress});
+        this.update({queryProgress: progress, queryResult: null});
       }
     ).get();
 

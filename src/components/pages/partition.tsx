@@ -5,14 +5,14 @@ import { Results } from '../results';
 import { QueryResult } from '../../lib/clickhouse-client';
 import { prettyFormatBytes } from '../../lib/formatting';
 
-interface SchemaPageState {
+interface PartitionPageState {
   result: QueryResult | null;
   databaseName: string;
   tableName: string | null;
 }
 
-export class SchemaPage extends React.Component {
-  state: SchemaPageState;
+export class PartitionPage extends React.Component {
+  state: PartitionPageState;
 
   constructor(props: any) {
     super(props);
@@ -21,11 +21,7 @@ export class SchemaPage extends React.Component {
     this.state.result = null;
   }
 
-  async getTableSchema(databaseName: string, tableName: string) {
-    if (!databaseName || !tableName) {
-      return;
-    }
-
+  async getTablePartitions(databaseName: string, tableName: string) {
     this.setState({result: null});
 
     const client = store.get('client');
@@ -35,26 +31,28 @@ export class SchemaPage extends React.Component {
 
     let result = await client.executeQuery(`
       SELECT
-        name,
-        type,
-        data_compressed_bytes as compressed,
-        data_uncompressed_bytes as uncompressed
-      FROM system.columns
+        table,
+        partition,
+        sum(rows) as rows,
+        sum(bytes) as bytes
+      FROM system.parts
       WHERE database='${databaseName}' AND table='${tableName}'
+      GROUP BY table, partition
     `).get();
+
     this.setState({result});
   }
 
   componentWillMount() {
     if (this.state.databaseName && this.state.tableName) {
-      this.getTableSchema(this.state.databaseName, this.state.tableName);
+      this.getTablePartitions(this.state.databaseName, this.state.tableName);
     }
   }
 
-  componentWillUpdate(nextProps: any, nextState: SchemaPageState) {
+  componentWillUpdate(nextProps: any, nextState: PartitionPageState) {
     if (this.state.databaseName !== nextState.databaseName || this.state.tableName !== nextState.tableName) {
-      if (nextState.tableName) {
-        this.getTableSchema(nextState.databaseName, nextState.tableName);
+      if (nextState.databaseName && nextState.tableName) {
+        this.getTablePartitions(nextState.databaseName, nextState.tableName);
       }
     }
   }
@@ -63,8 +61,7 @@ export class SchemaPage extends React.Component {
     let body;
 
     const fieldFormatters = {
-      compressed: prettyFormatBytes,
-      uncompressed: prettyFormatBytes,
+      bytes: prettyFormatBytes,
     };
 
     if (!this.state.databaseName || !this.state.tableName) {
@@ -87,18 +84,19 @@ export class SchemaPage extends React.Component {
   }
 }
 
-interface SchemaPageSideBarState {
+interface PartitionPageSideBarState {
   tables: Array<string>;
-  databaseName: string;
   tableName: string | null;
+  databaseName: string | null;
 }
 
-export class SchemaPageSideBar extends React.Component {
-  state: SchemaPageSideBarState;
+export class PartitionPageSideBar extends React.Component {
+  state: PartitionPageSideBarState;
 
   constructor(props: any) {
     super(props);
-    store.connectComponentState(this, ['databaseName', 'tableName']);
+
+    store.connectComponentState(this, ['tableName']);
     this.state.tables = [];
   }
 
@@ -107,8 +105,7 @@ export class SchemaPageSideBar extends React.Component {
     if (client == null) {
       return;
     }
-
-    const tables = await client.getTables('default');
+    const tables = await client.getTables('default', true);
 
     this.setState({
       tables: tables.map((table: any) => table.name),

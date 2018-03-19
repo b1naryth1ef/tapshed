@@ -11,6 +11,7 @@ import { ConnectionDialog } from './components/connection';
 
 import { QueryPage, QueryPageSideBar } from './components/pages/query';
 import { SchemaPage, SchemaPageSideBar } from './components/pages/schema';
+import { PartitionPage, PartitionPageSideBar } from './components/pages/partition';
 
 import { Tab } from './lib/tab';
 import { ClickhouseClient, QueryResult, QueryProgress } from './lib/clickhouse-client';
@@ -124,7 +125,6 @@ class App extends React.Component {
   }
 
   render() {
-    const setTableName = this.setTableName.bind(this);
     const setPage = this.setPage.bind(this);
     const connect = this.connect.bind(this);
     const disconnect = this.disconnect.bind(this);
@@ -148,20 +148,20 @@ class App extends React.Component {
         break;
       case PageType.SCHEMA:
         page = (
-          <SchemaPage
-            client={this.state.client}
-            databaseName={this.state.databaseName}
-            tableName={this.state.tableName || ''}
-          />
+          <SchemaPage />
         );
 
         sidebar = (
-          <SchemaPageSideBar
-            client={this.state.client}
-            setTableName={setTableName}
-            databaseName={this.state.databaseName}
-            tableName={this.state.tableName || ''}
-          />
+          <SchemaPageSideBar />
+        );
+        break;
+      case PageType.PARTITION:
+        page = (
+          <PartitionPage />
+        );
+
+        sidebar = (
+          <PartitionPageSideBar />
         );
         break;
       default:

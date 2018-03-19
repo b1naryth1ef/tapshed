@@ -3,6 +3,7 @@ import * as React from 'react';
 export enum PageType {
   QUERY,
   SCHEMA,
+  PARTITION,
 }
 
 function getPageName(pageType: PageType): string {
@@ -11,6 +12,8 @@ function getPageName(pageType: PageType): string {
       return 'Query';
     case PageType.SCHEMA:
       return 'Schema';
+    case PageType.PARTITION:
+      return 'Partitions';
     default:
       return '';
   }
@@ -61,6 +64,7 @@ export class NavBar extends React.Component {
         <ul>
           <NavBarItem pageType={PageType.QUERY} parent={this} />
           <NavBarItem pageType={PageType.SCHEMA} parent={this} />
+          <NavBarItem pageType={PageType.PARTITION} parent={this} />
         </ul>
         <div className="connection-actions" style={{display: 'block'}}>
           <a href="#" className="btn btn-default btn-sm" onClick={this.props.disconnect}>Disconnect</a>

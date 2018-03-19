@@ -6,5 +6,6 @@ export function initialize() {
     currentTab: null,
     client: null,
     databaseName: 'default',
+    tableName: null,
   });
 }
