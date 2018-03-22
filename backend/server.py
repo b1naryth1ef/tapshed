@@ -42,6 +42,7 @@ def query():
     try:
         start = time.time()
         num_bytes = 0
+        total_rows = 0
 
         if bool(int(request.query.get('progress', '1'))):
             progress = ch_client.execute_with_progress(request.query.query, with_column_types=True)
@@ -61,7 +62,7 @@ def query():
             'columns': [{'name': i[0], 'type': i[1]} for i in columns],
             'error': None,
             'stats': {
-                'rows': rows,
+                'rows': total_rows,
                 'bytes': num_bytes,
                 'duration': int((time.time() - start) * 1000),
             }

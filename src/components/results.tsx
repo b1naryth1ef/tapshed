@@ -121,7 +121,9 @@ export class Results extends React.Component {
           col = fieldFormatters[colIndex](col);
         }
 
-        if (col.toString !== undefined) {
+        if (col === null || col === undefined) {
+          col = 'NULL';
+        } else {
           col = col.toString();
         }
 
