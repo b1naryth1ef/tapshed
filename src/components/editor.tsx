@@ -66,20 +66,6 @@ export class EditorActions extends React.Component {
       resultText = `${currentTab.queryResult.rows.length} rows returned (${statsText})`;
     }
 
-    let deleteButton = null;
-    if (currentTab.saved) {
-      deleteButton =  (
-        <input
-          type="button"
-          id="delete"
-          value="Delete Query"
-          className="btn btn-sm btn-danger"
-          onClick={() => { this.props.currentTab.delete(); }}
-          disabled={executing}
-        />
-      );
-    }
-
     return (
       <div className="actions">
         <input
@@ -98,7 +84,14 @@ export class EditorActions extends React.Component {
           onClick={() => { this.props.currentTab.save(); }}
           disabled={executing}
         />
-        {deleteButton}
+        <input
+          type="button"
+          id="delete"
+          value="Delete Query"
+          className="btn btn-sm btn-danger"
+          onClick={() => { this.props.currentTab.delete(); }}
+          disabled={executing}
+        />
         <input
           type="button"
           id="run"

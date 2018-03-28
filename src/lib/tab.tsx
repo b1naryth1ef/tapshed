@@ -37,12 +37,14 @@ export class Tab extends Immutable {
   }
 
   delete() {
-    const client = store.get('client');
-    if (client == null) {
-      return;
-    }
+    if (this.saved) {
+      const client = store.get('client');
+      if (client == null) {
+        return;
+      }
 
-    client.deleteSavedQuery(this.name);
+      client.deleteSavedQuery(this.name);
+    }
 
     let tabs = Object.assign({}, store.get('tabs'));
     delete tabs[this.name];
