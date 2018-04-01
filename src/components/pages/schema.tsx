@@ -142,7 +142,7 @@ export class SchemaPageSideBar extends React.Component {
         <div className="tables-list">
           <div className="wrap">
             <div className="title main">
-              <span className="current-database">{this.state.databaseName}</span>
+              Tapshed
             </div>
             <div className="tables">
               <ul>{listItems}</ul>

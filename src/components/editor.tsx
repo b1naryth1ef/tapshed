@@ -66,8 +66,19 @@ export class EditorActions extends React.Component {
       resultText = `${currentTab.queryResult.rows.length} rows returned (${statsText})`;
     }
 
-    return (
-      <div className="actions">
+    let runButton = null;
+    if (executing) {
+      runButton = (
+        <input
+          type="button"
+          id="run"
+          value="Cancel Query"
+          className="btn btn-sm btn-primary"
+          onClick={() => { this.props.currentTab.cancel(); }}
+        />
+      );
+    } else {
+      runButton = (
         <input
           type="button"
           id="run"
@@ -76,6 +87,12 @@ export class EditorActions extends React.Component {
           disabled={executing}
           onClick={() => { this.props.currentTab.execute(); }}
         />
+      );
+    }
+
+    return (
+      <div className="actions">
+        {runButton}
         <input
           type="button"
           id="save"
@@ -98,7 +115,7 @@ export class EditorActions extends React.Component {
           value="Rename Query"
           className="btn btn-sm btn-default"
           disabled={executing}
-          onClick={() => { 
+          onClick={() => {
             const newName = window.prompt('Query Name', this.props.currentTab.name);
             if (newName) {
               this.props.currentTab.setName(newName);

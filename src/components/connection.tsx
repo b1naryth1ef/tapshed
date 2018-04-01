@@ -101,7 +101,7 @@ export class ConnectionDialog extends React.Component {
     return (
       <div id="connection_window" style={{display: 'block'}}>
         <div className="connection-settings">
-          <h1>taphouse</h1>
+          <h1>Tapshed</h1>
           <ConnectionForm connect={this.props.connect} />
         </div>
       </div>

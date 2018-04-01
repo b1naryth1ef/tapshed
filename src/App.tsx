@@ -6,7 +6,6 @@ import './assets/font-awesome.css';
 import './assets/App.css';
 
 import { NavBar, PageType } from './components/navbar';
-// import { SideBar }  from './components/sidebar';
 import { ConnectionDialog } from './components/connection';
 
 import { QueryPage, QueryPageSideBar } from './components/pages/query';

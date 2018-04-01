@@ -101,6 +101,10 @@
   top: 18px;
 }
 
+#sidebar .title.main {
+  text-align: center;
+}
+
 #sidebar span.current-database,
 #sidebar input.typeahead {
   margin-left: 30px;

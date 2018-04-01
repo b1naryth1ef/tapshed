@@ -1,7 +1,7 @@
 import { store } from 'statorgfc';
 
 import { Immutable } from './immutable';
-import { QueryResult, QueryProgress } from './clickhouse-client';
+import { QueryResult, QueryProgress, ExecutingQuery } from './clickhouse-client';
 
 export class Tab extends Immutable {
   name: string;
@@ -10,6 +10,7 @@ export class Tab extends Immutable {
   queryContents: string;
   queryProgress: QueryProgress | null;
   queryResult: QueryResult | null;
+  executingQuery: ExecutingQuery | null;
 
   constructor(name: string, saved: boolean, queryContents?: string) {
     super();
@@ -20,6 +21,7 @@ export class Tab extends Immutable {
     this.queryContents = queryContents || '';
     this.queryProgress = null;
     this.queryResult = null;
+    this.executingQuery = null;
   }
 
   get queryExecuting(): boolean {
@@ -57,21 +59,30 @@ export class Tab extends Immutable {
     store.set({tabs: tabs, currentTab: currentTab});
   }
 
+  cancel() {
+    if (this.executingQuery) {
+      this.executingQuery.cancel();
+    }
+  }
+
   async execute() {
     const client = store.get('client');
     if (client == null) {
       return;
     }
 
-    const result = await client.executeQuery(
+    const executingQuery = client.executeQuery(
       this.queryContents,
       store.get('databaseName'),
       (progress: QueryProgress) => {
         this.update({queryProgress: progress, queryResult: null});
       }
-    ).get();
+    );
 
-    this.update({queryProgress: null, queryResult: result});
+    this.update({executingQuery});
+
+    const result = await executingQuery.get();
+    this.update({queryProgress: null, queryResult: result, executingQuery: null});
   }
 
   replace(inst: Tab) {

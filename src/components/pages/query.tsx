@@ -125,7 +125,7 @@ export class QueryPageSideBar extends React.Component {
         <div className="tables-list">
           <div className="wrap">
             <div className="title main">
-              <span className="current-database">test</span>
+              Tapshed
             </div>
             <div className="tables">
               <ul>{tabs}</ul>
